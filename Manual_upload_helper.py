@@ -15,7 +15,9 @@ from tksheet import Sheet
 import pyperclip
 
 # ---------- 常量 ----------
-# 文挡列表
+# 文档类型列表
+# 此列表用于下拉选择框，用户可以选择不同的文档类型
+
 DOC_ITEMS = [
     "0 Select your doc type",
     "1 PDI (Pre Delivery Inspection)",
