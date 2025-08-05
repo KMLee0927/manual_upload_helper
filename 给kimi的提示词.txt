@@ -232,3 +232,159 @@ def clean_all():
     sheet.set_sheet_data([])
     model_sheet.set_sheet_data([])
     modelcode_text.delete("1.0",
+	
+	
+	------------------------------------------------------------------------
+	
+	CPD20/25/30/35-XC4/C5/D3/D2/J2/J4-I
+
+CPD20/25/30/35-XC4/C5/D3/D2/J2/J4
+
+
+CPD25-XLC4/C5/D3/D2/J2/J4
+
+CPD25-XLC4/C5/D3/D2/J2/J4-I
+
+	
+	
+
+
+
+重新生成“separate_modelcode”函数“def separate_modelcode():
+    """
+    处理 modelcode_text 中的输入，支持：
+    - 每行可以包含多个 model code，用空格分隔
+    - 每个 model code 会被单独处理并展开
+    - 展开后的结果填入 model_sheet
+    - 每行最多 36 列，超出部分自动换行
+    """
+    raw = modelcode_text.get("1.0", "end-1c").strip()
+    if not raw:
+        model_sheet.set_sheet_data([])
+        return
+
+    result = []
+    # 按行拆分输入
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        # 按空格拆分每行中的多个 model code
+        model_codes = line.split()
+        for model_code in model_codes:
+            # 正则匹配每个 model code
+            m = re.match(r'^([A-Za-z]+)(\d+(?:/\d+)*)(.*?)-([A-Za-z0-9]+(?:/[A-Za-z0-9]+)*)$', model_code)
+            if m:
+                prefix, nums_str, mid, suffixes_str = m.groups()
+                nums = nums_str.split('/')
+                suffixes = suffixes_str.split('/')
+                # 生成所有组合
+                combinations = [f"{prefix}{n}{mid}-{s}" for n in nums for s in suffixes]
+                # 按 36 列分组
+                for i in range(0, len(combinations), 36):
+                    result.append(combinations[i:i+36])
+            else:
+                # 如果没有匹配到，直接作为一行
+                result.append([model_code] + [""] * 35)
+
+    model_sheet.set_sheet_data(result)”，必须满足下面的输入和输出结果
+
+
+输入为： 	CPD20/25/30/35-XC4/C5/D3/D2/J2/J4
+输出为：  CPD20-XC4 | CPD20-XC5 | CPD20-XD3 | CPD20-XD2 | CPD20-XJ2 | CPD20-XJ4 | CPD25-XC4 | CPD25-XC5 | CPD25-XD3 | CPD25-XD2 | CPD25-XJ2 | CPD25-XJ4 | CPD30-XC4 | CPD30-XC5 | CPD30-XD3 | CPD30-XD2 | CPD30-XJ2 | CPD30-XJ4 | CPD35-XC4 | CPD35-XC5 | CPD35-XD3 | CPD35-XD2 | CPD35-XJ2 | CPD35-XJ4 | 
+
+
+输入为： 	CPD20/25/30/35-XC4/C5/D3/D2/J2/J4-I
+输出为：  CPD20-XC4-I | CPD20-XC5-I | CPD20-XD3-I | CPD20-XD2-I | CPD20-XJ2-I | CPD20-XJ4-I | CPD25-XC4-I | CPD25-XC5-I | CPD25-XD3-I | CPD25-XD2-I | CPD25-XJ2-I | CPD25-XJ4-I | CPD30-XC4-I | CPD30-XC5-I | CPD30-XD3-I | CPD30-XD2-I | CPD30-XJ2-I | CPD30-XJ4-I | CPD35-XC4-I | CPD35-XC5-I | CPD35-XD3-I | CPD35-XD2-I | CPD35-XJ2-I | CPD35-XJ4-I | 
+
+输入为： CPD25-XLC4/C5/D3/D2/J2/J4
+输出为： CPD25-XLC4 | CPD25-XLC5 | CPD25-XLD3 | CPD25-XLD2 | CPD25-XLJ2 | CPD25-XLJ4  
+
+输入为： CPD25-XLC4/C5/D3/D2/J2/J4-I
+输出为： CPD25-XLC4-I | CPD25-XLC5-I | CPD25-XLD3-I | CPD25-XLD2-I | CPD25-XLJ2-I | CPD25-XLJ4-I  
+
+
+
+输入为： CPD10/15/18/20/25/30/35-AC4-E/I CPD25-ALC4-E/I CPD10/15/18/20/25/30/35-AD2
+输出为： CPD10-AC4-E | CPD15-AC4-E | …
+        CPD25-ALC4-E | CPD25-ALC4-I | …
+		CPD10-AD2 | CPD15-AD2 | …
+
+输入为： CPD10/15/18/20/25/30/35-AZ4-E CPD25-ALZ4-E
+输出为： CPD10-AZ4-E | CPD15-AZ4-E | …
+        CPD25-ALZ4-E 
+		
+
+输入为 CPD10/15/18/20/25/30-A CPD10/15/18/20/25/30/35-AZ3-E 
+输出为 CPD10-A | CPD15-A | CPD18-A | CPD20-A | CPD25-A | CPD30-A |
+      CPD10-AZ3-E | CPD15-AZ3-E | CPD18-AZ3-E | CPD20-AZ3-E | CPD25-AZ3-E | CPD30-AZ3-E | CPD35-AZ3-E |  
+
+
+输入为 CPD10/15/18/20/25/30-A
+输出为 CPD10-A | CPD15-A | CPD18-A | CPD20-A | CPD25-A | CPD30-A | 
+
+
+输入为 CPD25-ALZ3-E
+输出为 CPD25-ALZ3-E
+
+
+输入为 CPD10/15/18-AC4-I
+输出为 CPD10-AC4-I | CPD15-AC4-I | CPD18-AC4-I  
+
+
+输入为 CPD10/15/18/20/25/30/35-AZ3-E
+输出为 CPD10-AZ3-E | CPD15-AZ3-E | CPD18-AZ3-E | CPD20-AZ3-E | CPD25-AZ3-E | CPD30-AZ3-E | CPD35-AZ3-E
+
+
+输入为 CPD10/15/18/20/25/30/35-AC4-E/I 
+输出为 CPD10-AC4-E | CPD15-AC4-E | CPD18-AC4-E | CPD10-AC4-I | CPD15-AC4-I |CPD18-AC4-I
+
+关键设计说明：
+1. 基础部分处理：
+使用正则^([A-Za-z]+)(\d.*)$分离字母前缀和数字部分
+数字部分按/分割后与前缀组合（如CPD10/15 → ["CPD10", "CPD15"]）
+
+2. 后缀递归展开：
+expand_suffix函数处理带-的后缀：
+无-时直接按/分割（"XC4/C5/D3/D2/J2/J4" → ["XC4","XC5","XD3","XD2","XJ2","XJ4"]），对“X”保留在每个分割的元素
+无-时直接按/分割（"XLC4/C5/D3/D2/J2/J4" → ["XLC4","XLC5","XLD3","XLD2","XLJ2","XLJ4"]），对“XL”保留在每个分割的元素
+有-时递归处理前缀部分（"AC4-E/I" → ["AC4-E","AC4-I"]）
+
+3. 组合与分组：
+基础部分与后缀部分组合（CPD10 + AC4-E → CPD10-AC4-E）
+最终结果按36列分组，超出行自动换行
+
+
+
+
+
+CPD20/25/30/35-XC4/C5/D3/D2/J2/J4
+CPD20/25/30/35-XC4/C5/D3/D2/J2/J4-I
+CPD25-XLC4/C5/D3/D2/J2/J4
+CPD25-XLC4/C5/D3/D2/J2/J4-I
+CPD10/15/18/20/25/30/35-AC4-E/I
+CPD10/15/18/20/25/30/35-AZ3-E
+CPD25-ALZ3-E
+CPD10/15/18-AC4-I
+CPD10/15/18/20/25/30/35-AC4-E/I
+CPD10/15/18/20/25/30/35-AZ3-E
+CPD25-ALZ3-E
+CPD10/15/18/20/25/30-A
+CPD10/15/18/20/25/30/35-AZ3-E
+
+
+
+
+
+输入为： 	CPD20/25/30/35-XC4/C5/D3/D2/J2/J4
+输出为：  CPD20-XC4 | CPD20-C5 | CPD20-D3 | CPD20-D2 | CPD20-J2 | CPD20-J4 | CPD25-XC4 | CPD25-C5 | CPD25-D3 | CPD25-D2 | CPD25-J2 | CPD25-J4 | CPD30-XC4 | CPD30-C5 | CPD30-D3 | CPD30-D2 | CPD30-J2 | CPD30-J4 | CPD35-XC4 | CPD35-C5 | CPD35-D3 | CPD35-D2 | CPD35-J2 | CPD35-J4 | 
+
+
+输入为： 	CPD20/25/30/35-XC4/C5/D3/D2/J2/J4-I
+输出为：  CPD20-XC4-I | CPD20-XC5-I | CPD20-XD3-I | CPD20-XD2-I | CPD20-XJ2-I | CPD20-XJ4-I | CPD25-XC4-I | CPD25-XC5-I | CPD25-XD3-I | CPD25-XD2-I | CPD25-XJ2-I | CPD25-XJ4-I | CPD30-XC4-I | CPD30-XC5-I | CPD30-XD3-I | CPD30-XD2-I | CPD30-XJ2-I | CPD30-XJ4-I | CPD35-XC4-I | CPD35-XC5-I | CPD35-XD3-I | CPD35-XD2-I | CPD35-XJ2-I | CPD35-XJ4-I | 
+
+输入为： CPD25-XLC4/C5/D3/D2/J2/J4
+输出为： CPD25-XLC4 | CPD25-XLC5 | CPD25-XLD3 | CPD25-XLD2 | CPD25-XLJ2 | CPD25-XLJ4  
+
+输入为： CPD25-XLC4/C5/D3/D2/J2/J4-I
+输出为： CPD25-XLC4-I | CPD25-XLC5-I | CPD25-XLD3-I | CPD25-XLD2-I | CPD25-XLJ2-I | CPD25-XLJ4-I  

@@ -90,39 +90,124 @@ def open_selected_file():
     os.startfile(path) if os.name == "nt" else subprocess.run(["xdg-open", path])
 
 # ---------- Separate ModelCode ----------
+
+
+def expand_suffix(suffix_str):
+    """
+    递归展开后缀字符串，支持斜杠分隔的多个选项和嵌套的后缀扩展
+    例如：
+        "XC4/C5" -> ["XC4", "C5"]
+        "AC4-E/I" -> ["AC4-E", "AC4-I"]
+        "XLC4/C5-I" -> ["XLC4-I", "XLC5-I"]
+    """
+    if '-' not in suffix_str:
+        return suffix_str.split('/')
+    else:
+        last_dash_index = suffix_str.rfind('-')
+        prefix_part = suffix_str[:last_dash_index]
+        ext_part = suffix_str[last_dash_index+1:]
+        ext_list = ext_part.split('/')
+        prefix_list = expand_suffix(prefix_part)
+        result = []
+        for pre in prefix_list:
+            for ext in ext_list:
+                result.append(f"{pre}-{ext}")
+        return result
+
 def separate_modelcode():
     """
     处理 modelcode_text 中的输入，支持：
     - 每行可以包含多个 model code，用空格分隔
     - 每个 model code 会被单独处理并展开
-    - 展开后的结果填入 model_sheet 的 20 列中
+    - 展开后的结果填入 model_sheet
+    - 每行最多 36 列，超出部分自动换行
     """
     raw = modelcode_text.get("1.0", "end-1c").strip()
     if not raw:
         model_sheet.set_sheet_data([])
         return
 
+    def expand_suffix_group(suffix_str):
+        # 展开如 XC4/C5/D3/D2/J2/J4 或 XLC4/C5/D3/D2/J2/J4
+        parts = suffix_str.split('/')
+        def get_x_prefix(parts):
+            prefixes = set()
+            for p in parts:
+                m = re.match(r'^(XL|X)', p)
+                if m:
+                    prefixes.add(m.group(1))
+            if 'XL' in prefixes:
+                return 'XL'
+            elif 'X' in prefixes:
+                return 'X'
+            return ''
+        xprefix = get_x_prefix(parts)
+        res = []
+        for p in parts:
+            if xprefix:
+                # 如果本身已带X/XL前缀，则不重复加
+                if p.startswith(xprefix):
+                    res.append(p)
+                else:
+                    m = re.match(r'.*?([A-Z][A-Za-z0-9]*)$', p)
+                    if m:
+                        res.append(xprefix + m.group(1))
+                    else:
+                        res.append(xprefix + p)
+            else:
+                res.append(p)
+        return res
+
+    def expand_suffix(suffix_str):
+        # 递归展开后缀字符串，支持斜杠分隔的多个选项和嵌套的后缀扩展
+        if not suffix_str:
+            return ['']
+        if '-' not in suffix_str:
+            return expand_suffix_group(suffix_str)
+        else:
+            last_dash = suffix_str.rfind('-')
+            prefix_part = suffix_str[:last_dash]
+            ext_part = suffix_str[last_dash+1:]
+            ext_list = expand_suffix_group(ext_part)
+            prefix_list = expand_suffix(prefix_part)
+            result = []
+            for pre in prefix_list:
+                for ext in ext_list:
+                    if pre and ext:
+                        result.append(f"{pre}-{ext}")
+                    elif pre:
+                        result.append(pre)
+                    else:
+                        result.append(ext)
+            return result
+
     result = []
-    # 按行拆分输入
     for line in raw.splitlines():
         line = line.strip()
         if not line:
             continue
-        # 按空格拆分每行中的多个 model code
         model_codes = line.split()
         for model_code in model_codes:
-            # 正则匹配每个 model code
-            m = re.match(r'^([A-Za-z]+)(\d+(?:/\d+)*)(.*)-(.+?)$', model_code)
-            if m:
-                prefix, nums_str, mid, suffixes_str = m.groups()
-                nums = nums_str.split('/')
-                suffixes = suffixes_str.split('/')
-                cols = [f"{prefix}{n}{mid}-{s}" for n in nums for s in suffixes]
+            m = re.match(r'^([A-Za-z]+)([\d/]+)(.*)$', model_code)
+            if not m:
+                result.append([model_code] + [""] * 35)
+                continue
+            prefix, nums_str, rest = m.groups()
+            nums = nums_str.split('/')
+            if not rest:
+                combinations = [f"{prefix}{n}" for n in nums]
             else:
-                cols = [model_code] + [""] * 19
-            cols = (cols + [""] * 20)[:20]
-            result.append(cols)
-
+                dash_idx = rest.find('-')
+                if dash_idx == -1:
+                    mid = rest
+                    combinations = [f"{prefix}{n}{mid}" for n in nums]
+                else:
+                    mid = rest[:dash_idx]
+                    suffix = rest[dash_idx+1:]
+                    suffixes = expand_suffix(suffix)
+                    combinations = [f"{prefix}{n}{mid}-{s}" for n in nums for s in suffixes]
+            for i in range(0, len(combinations), 36):
+                result.append(combinations[i:i+36])
     model_sheet.set_sheet_data(result)
 
 # ---------- GUI 操作 ----------
@@ -261,13 +346,13 @@ modelcode_text = tk.Text(model_frm, width=50, height=6, wrap="word")
 modelcode_text.pack(side="left", padx=4)
 ttk.Button(model_frm, text="分开型号代码 (Separate Modelcode)", command=separate_modelcode).pack(side="left", padx=4)
 
-# 5. 20 列模型表格（可随窗口伸缩）
+# 5.36 列模型表格（可随窗口伸缩）
 model_sheet = Sheet(
     main,
-    headers=[f"Col{i+1}" for i in range(20)],
+    headers=[f"Col{i+1}" for i in range(36)],
     show_row_index=True,
     total_rows=1000,
-    total_cols=20
+    total_cols=36
 )
 model_sheet.grid(row=4, column=0, columnspan=4, sticky="nsew", padx=8, pady=4)
 
